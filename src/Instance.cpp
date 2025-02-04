@@ -247,7 +247,37 @@ bool Instance::loadMap()
 	string line;
 	tokenizer<char_separator<char>>::iterator beg;
 	getline(myfile, line);
-	if (line[0] == 't') // Nathan's benchmark
+	if (line.substr(0, 2) == "P5") // .pgm file in binary mode
+	{
+		while (getline(myfile, line))
+        {
+            if (line[0] == '#') // Skip comment lines
+                continue;
+            char_separator<char> sep(" ");
+            tokenizer<char_separator<char>> tok(line, sep);
+            beg = tok.begin();
+            num_of_cols = atoi((*beg).c_str()); // read number of cols
+            beg++;
+            num_of_rows = atoi((*beg).c_str()); // read number of rows
+            break;
+        }
+		getline(myfile, line); // skip the max value line
+
+		map_size = num_of_cols * num_of_rows;
+    my_map.resize(map_size, false);
+
+		// Read binary data
+    vector<unsigned char> data(map_size);
+    myfile.read(reinterpret_cast<char*>(data.data()), map_size);
+    for (int i = 0; i < map_size; i++)
+        {
+        my_map[i] = (data[i] != 254 ); // Assuming 254 is free space and the rest is an obstacle
+    }
+		myfile.close();
+		printMap();
+		return true;
+	}
+	else if (line[0] == 't') // Nathan's benchmark
 	{
 		char_separator<char> sep(" ");
 		getline(myfile, line);
