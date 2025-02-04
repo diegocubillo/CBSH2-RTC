@@ -1,6 +1,7 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 def read_paths(file_name):
     paths = []
@@ -45,14 +46,30 @@ def plot_paths(paths_file, map_file):
     for _ in range(len(paths)):
         colors.append((random.random(), random.random(), random.random()))
 
-    for path_index in reversed(range(len(paths))):  # Process paths in reverse order
-        path = paths[path_index]
-        for point in path:
-            if point:  # Ensure the point is not an empty string
-                x, y = map(int, point.split(','))
-                matrix[x, y] = colors[path_index]
+    fig, ax = plt.subplots()
+    im = ax.imshow(matrix)
 
-    plt.imshow(matrix)
+    def update(frame):
+        nonlocal matrix
+        matrix = np.ones((rows, columns, 3))  # Reset to white matrix
+        for i in range(rows):
+            for j in range(columns):
+                if map_data[i, j] != 254:
+                    matrix[i, j] = [0, 0, 0]  # Set obstacle color to black
+
+        for path_index in reversed(range(len(paths))):  # Process paths in reverse order
+            path = paths[path_index]
+            for point in path[:frame]:
+                if point:  # Ensure the point is not an empty string
+                    x, y = map(int, point.split(','))
+                    matrix[x, y] = colors[path_index]
+
+        im.set_array(matrix)
+        return [im]
+
+    ani = animation.FuncAnimation(fig, update, frames=range(1, max(len(path) for path in paths) + 1),
+                                  interval=200, repeat=True)
+
     plt.show()
 
 if __name__ == "__main__":
