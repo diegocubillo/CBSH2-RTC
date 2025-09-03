@@ -1,3 +1,12 @@
 .idea
 cmake-*
 bin
+
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+cbs
+paths.txt
+*.csv
+.vscode/
