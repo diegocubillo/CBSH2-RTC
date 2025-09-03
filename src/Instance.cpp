@@ -247,11 +247,20 @@ bool Instance::loadMap()
 	string line;
 	tokenizer<char_separator<char>>::iterator beg;
 	getline(myfile, line);
+	
+	// Check for invalid PGM magic numbers
+	if (line.length() >= 2 && line[0] == 'P' && line.substr(0, 2) != "P2" && line.substr(0, 2) != "P5")
+	{
+		myfile.close();
+		return false; // Invalid PGM format
+	}
+	
 	if (line.substr(0, 2) == "P5") // .pgm file in binary mode
 	{
 		while (getline(myfile, line))
         {
-            if (line[0] == '#') // Skip comment lines
+            // Skip comment lines and empty/whitespace-only lines
+            if (line.empty() || line[0] == '#' || line.find_first_not_of(" \t\r\n") == string::npos)
                 continue;
             char_separator<char> sep(" ");
             tokenizer<char_separator<char>> tok(line, sep);
@@ -261,7 +270,11 @@ bool Instance::loadMap()
             num_of_rows = atoi((*beg).c_str()); // read number of rows
             break;
         }
-		getline(myfile, line); // skip the max value line
+		while (getline(myfile, line)) // skip the max value line and any empty lines
+		{
+			if (!line.empty() && line.find_first_not_of(" \t\r\n") != string::npos)
+				break;
+		}
 
 		map_size = num_of_cols * num_of_rows;
     my_map.resize(map_size, false);
@@ -273,6 +286,55 @@ bool Instance::loadMap()
         {
         my_map[i] = (data[i] != 254 ); // Assuming 254 is free space and the rest is an obstacle
     }
+		myfile.close();
+		printMap();
+		return true;
+	}
+	else if (line.substr(0, 2) == "P2") // .pgm file in ASCII mode
+	{
+		while (getline(myfile, line))
+        {
+            // Skip comment lines and empty/whitespace-only lines
+            if (line.empty() || line[0] == '#' || line.find_first_not_of(" \t\r\n") == string::npos)
+                continue;
+            char_separator<char> sep(" ");
+            tokenizer<char_separator<char>> tok(line, sep);
+            beg = tok.begin();
+            num_of_cols = atoi((*beg).c_str()); // read number of cols
+            beg++;
+            num_of_rows = atoi((*beg).c_str()); // read number of rows
+            break;
+        }
+		while (getline(myfile, line)) // skip the max value line and any empty lines
+		{
+			if (!line.empty() && line.find_first_not_of(" \t\r\n") != string::npos)
+				break;
+		}
+
+		map_size = num_of_cols * num_of_rows;
+    	my_map.resize(map_size, false);
+
+		// Read ASCII pixel data
+		for (int i = 0; i < num_of_rows; i++)
+		{
+			// Skip empty lines and get the next line with data
+			do {
+				getline(myfile, line);
+			} while (line.empty() || line.find_first_not_of(" \t\r\n") == string::npos);
+			
+			char_separator<char> sep(" ");
+			tokenizer<char_separator<char>> tok(line, sep);
+			beg = tok.begin();
+			for (int j = 0; j < num_of_cols; j++)
+			{
+				if (beg != tok.end())
+				{
+					int pixel_value = atoi((*beg).c_str());
+					my_map[linearizeCoordinate(i, j)] = (pixel_value != 254); // 254 is free space
+					beg++;
+				}
+			}
+		}
 		myfile.close();
 		printMap();
 		return true;
