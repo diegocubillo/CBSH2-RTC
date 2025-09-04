@@ -112,6 +112,48 @@ public:
                     const Config& config = getDefaultConfig());
 
     /**
+     * @brief Plan paths using scenario file (.scen format)
+     * 
+     * This method automatically parses the .scen file to extract start and goal
+     * positions for all agents, then performs path planning using the specified map.
+     * 
+     * @param map_file Path to the map file (.pgm, .map, or custom format)
+     * @param scenario_file Path to the scenario file (.scen format)
+     * @param config Configuration parameters (optional)
+     * @return Result containing paths and planning statistics
+     */
+    Result planPaths(const std::string& map_file,
+                    const std::string& scenario_file,
+                    const Config& config = getDefaultConfig());
+
+    /**
+     * @brief Plan paths using pre-loaded map and scenario file (.scen format)
+     * 
+     * This method automatically parses the .scen file to extract start and goal
+     * positions for all agents, then performs path planning using the provided map data.
+     * 
+     * @param map_data 2D grid map (true = obstacle, false = free)
+     * @param scenario_file Path to the scenario file (.scen format)
+     * @param config Configuration parameters (optional)
+     * @return Result containing paths and planning statistics
+     */
+    Result planPaths(const std::vector<std::vector<bool>>& map_data,
+                    const std::string& scenario_file,
+                    const Config& config = getDefaultConfig());
+
+    /**
+     * @brief Parse a scenario file to extract starts and goals
+     * 
+     * @param scenario_file Path to the scenario file (.scen format)
+     * @param starts Output vector for start coordinates
+     * @param goals Output vector for goal coordinates
+     * @return true if parsing was successful, false otherwise
+     */
+    static bool parseScenarioFile(const std::string& scenario_file,
+                                std::vector<Coordinate>& starts,
+                                std::vector<Coordinate>& goals);
+
+    /**
      * @brief Get the default configuration
      */
     static Config getDefaultConfig();

@@ -334,4 +334,90 @@ std::string CBSPlanner::pathsToString(const Paths& paths) {
     return ss.str();
 }
 
+CBSPlanner::Result CBSPlanner::planPaths(const std::string& map_file,
+                                        const std::string& scenario_file,
+                                        const Config& config) {
+    // Parse scenario file to extract starts and goals
+    std::vector<Coordinate> starts, goals;
+    if (!parseScenarioFile(scenario_file, starts, goals)) {
+        Result result;
+        result.success = false;
+        result.error_message = "Failed to parse scenario file: " + scenario_file;
+        return result;
+    }
+    
+    // Use the existing map_file + starts/goals method
+    return planPaths(map_file, starts, goals, config);
+}
+
+CBSPlanner::Result CBSPlanner::planPaths(const std::vector<std::vector<bool>>& map_data,
+                                        const std::string& scenario_file,
+                                        const Config& config) {
+    // Parse scenario file to extract starts and goals
+    std::vector<Coordinate> starts, goals;
+    if (!parseScenarioFile(scenario_file, starts, goals)) {
+        Result result;
+        result.success = false;
+        result.error_message = "Failed to parse scenario file: " + scenario_file;
+        return result;
+    }
+    
+    // Use the existing map_data + starts/goals method
+    return planPaths(map_data, starts, goals, config);
+}
+
+bool CBSPlanner::parseScenarioFile(const std::string& scenario_file,
+                                 std::vector<Coordinate>& starts,
+                                 std::vector<Coordinate>& goals) {
+    std::ifstream file(scenario_file);
+    if (!file.is_open()) {
+        return false;
+    }
+    
+    starts.clear();
+    goals.clear();
+    
+    std::string line;
+    
+    // Skip header line if present (version line)
+    if (std::getline(file, line)) {
+        // Check if this is a version line (starts with "version")
+        if (line.find("version") == 0) {
+            // This is a header, skip it
+        } else {
+            // This is data, process it
+            file.seekg(0, std::ios::beg); // Go back to beginning
+        }
+    }
+    
+    // Parse scenario data
+    // Format: bucket map width height startx starty goalx goaly distance
+    // We only care about: startx starty goalx goaly
+    while (std::getline(file, line)) {
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == '#' || line.find_first_not_of(" \t\r\n") == std::string::npos) {
+            continue;
+        }
+        
+        std::istringstream iss(line);
+        std::string bucket, map_name;
+        int width, height, start_x, start_y, goal_x, goal_y;
+        double distance;
+        
+        // Parse the line: bucket map width height startx starty goalx goaly distance
+        if (iss >> bucket >> map_name >> width >> height >> start_x >> start_y >> goal_x >> goal_y >> distance) {
+            starts.push_back({start_y, start_x}); // Note: .scen uses (x,y), we use (row,col)
+            goals.push_back({goal_y, goal_x});
+        } else {
+            // Failed to parse this line, continue to next
+            continue;
+        }
+    }
+    
+    file.close();
+    
+    // Verify we parsed some agents
+    return !starts.empty() && starts.size() == goals.size();
+}
+
 } // namespace cbs_planner

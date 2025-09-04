@@ -31,6 +31,7 @@ add_executable(cbs_tests
     test_impossible_cases.cpp
     test_results.cpp
     test_robustness.cpp
+    test_scenario_parsing.cpp
 )    # Link libraries
     target_link_libraries(cbs_tests 
         cbs_lib
