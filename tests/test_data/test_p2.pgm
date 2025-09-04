@@ -1,0 +1,10 @@
+P2
+# This is a test PGM file in ASCII format
+# Created for CBS library testing
+5 5
+255
+0 0 0 0 0
+0 254 254 0 0
+0 0 0 0 0
+0 0 254 254 0
+0 0 0 0 0

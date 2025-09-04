@@ -1,0 +1,9 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(Boost REQUIRED COMPONENTS program_options system filesystem)
+
+include("${CMAKE_CURRENT_LIST_DIR}/cbs_lib-targets.cmake")
+
+check_required_components(cbs_lib)
