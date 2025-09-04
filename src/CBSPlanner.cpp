@@ -178,10 +178,15 @@ CBSPlanner::Result CBSPlanner::planPaths(const std::string& map_file,
         return result;
     }
     
+    // Handle zero agents case - valid scenario with no planning needed
     if (starts.empty()) {
         Result result;
-        result.success = false;
-        result.error_message = "At least one agent must be specified";
+        result.success = true;
+        result.paths = {}; // Empty paths
+        result.solution_cost = 0;
+        result.runtime = 0.0;
+        result.num_expanded = 0;
+        result.num_generated = 0;
         return result;
     }
     
@@ -200,6 +205,14 @@ CBSPlanner::Result CBSPlanner::planPaths(const std::string& map_file,
     try {
         // Create instance
         pImpl->instance = new Instance(map_file, temp_agent_file, starts.size(), "", 0, 0, 0, 0);
+        
+        // Check if instance creation was successful
+        if (!pImpl->instance->isValid()) {
+            Result result;
+            result.success = false;
+            result.error_message = "Failed to create instance: " + pImpl->instance->getErrorMessage();
+            return result;
+        }
         
         // Create CBS solver
         pImpl->cbs_solver = new CBS(*pImpl->instance, config.use_sipp, 0);

@@ -27,6 +27,10 @@ add_executable(cbs_tests
     test_configuration.cpp
     test_map_loading.cpp
     test_format.cpp
+    test_edge_cases.cpp
+    test_impossible_cases.cpp
+    test_results.cpp
+    test_robustness.cpp
 )    # Link libraries
     target_link_libraries(cbs_tests 
         cbs_lib

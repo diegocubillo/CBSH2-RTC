@@ -1053,7 +1053,9 @@ bool CBS::solve(double _time_limit, int _cost_lowerbound, int _cost_upperbound)
 	{
 		cout << "Solution invalid!!!" << endl;
 		printPaths();
-		exit(-1);
+		// Instead of exiting, mark as failed and return
+		solution_found = false;
+		return false;
 	}
 	if (screen == 2)
         printPaths();

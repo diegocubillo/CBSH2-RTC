@@ -144,7 +144,11 @@ bool MDD::buildMDD(const ConstraintTable& ct, int num_of_levels, const SingleAge
 			if (!open.empty())
 			{
 				std::cerr << "Failed to build MDD!" << std::endl;
-				exit(1);
+				// Clean up and return false instead of exiting
+				for (auto it : closed)
+					delete it;
+				closed.clear();
+				return false;
 			}
 			break;
 		}
