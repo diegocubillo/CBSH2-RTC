@@ -766,7 +766,7 @@ bool Instance::parsePGMASCII(ifstream& file)
 			}
 			
 			int pixel_value = atoi((*beg).c_str());
-			my_map[linearizeCoordinate(i, j)] = (pixel_value != 254); // 254 is free space
+			my_map[linearizeCoordinate(i, j)] = (pixel_value < 254); // Values >= 254 are free space, < 254 are obstacles
 			beg++;
 		}
 	}

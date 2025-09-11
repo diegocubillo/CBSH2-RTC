@@ -739,7 +739,8 @@ string CBS::getSolverName() const
 		name += "+M";
 	if (bypass)
 		name += "+BP";
-	name += " with " + search_engines[0]->getName();
+	if (!search_engines.empty() && search_engines[0] != nullptr)
+		name += " with " + search_engines[0]->getName();
 	return name;
 }
 
