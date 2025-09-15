@@ -404,12 +404,28 @@ bool CBSPlanner::parseScenarioFile(const std::string& scenario_file,
         int width, height, start_x, start_y, goal_x, goal_y;
         double distance;
         
+        // First, count the total number of elements in the line
+        std::vector<std::string> elements;
+        std::string element;
+        std::istringstream count_iss(line);
+        while (count_iss >> element) {
+            elements.push_back(element);
+        }
+        
+        // Check if we have exactly 9 elements
+        if (elements.size() != 9) {
+            std::cerr << "Warning: Line in scenario file has " << elements.size() 
+                      << " elements instead of expected 9: \"" << line << "\"" << std::endl;
+            continue;
+        }
+        
         // Parse the line: bucket map width height startx starty goalx goaly distance
         if (iss >> bucket >> map_name >> width >> height >> start_x >> start_y >> goal_x >> goal_y >> distance) {
             starts.push_back({start_y, start_x}); // Note: .scen uses (x,y), we use (row,col)
             goals.push_back({goal_y, goal_x});
         } else {
-            // Failed to parse this line, continue to next
+            // This shouldn't happen if we have exactly 9 elements, but handle it just in case
+            std::cerr << "Warning: Failed to parse line with 9 elements: \"" << line << "\"" << std::endl;
             continue;
         }
     }

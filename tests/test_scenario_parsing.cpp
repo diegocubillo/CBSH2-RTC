@@ -262,3 +262,54 @@ TEST_F(ScenarioParsingTest, PlanningWithMapFileAndScenarioFile) {
     EXPECT_EQ(result.paths.size(), 2);
     EXPECT_GT(result.solution_cost, 0);
 }
+
+// Test 10: Scenario parsing with invalid element count
+TEST_F(ScenarioParsingTest, InvalidElementCount) {
+    std::ofstream scen_file("test_scenario.scen");
+    scen_file << "version 1\n";
+    
+    // Line with too few elements (only 6 instead of 9)
+    scen_file << "0 simple_test.map 5 5 0 0\n";
+    
+    // Line with too many elements (11 instead of 9)  
+    scen_file << "1 simple_test.map 5 5 1 0 3 4 4.2426406871193 extra element\n";
+    
+    // Valid line with exactly 9 elements
+    scen_file << "2 simple_test.map 5 5 2 0 4 4 5.6568542494924\n";
+    
+    // Line with 7 elements (missing distance and goal_y)
+    scen_file << "3 simple_test.map 5 5 3 0 2\n";
+    
+    // Line with 10 elements (one extra)
+    scen_file << "4 simple_test.map 5 5 4 0 1 1 1.4142135623731 extra\n";
+    
+    scen_file.close();
+
+    std::vector<cbs_planner::CBSPlanner::Coordinate> starts, goals;
+    
+    // Capture stderr to verify warnings are printed
+    std::streambuf* orig_cerr = std::cerr.rdbuf();
+    std::ostringstream captured_cerr;
+    std::cerr.rdbuf(captured_cerr.rdbuf());
+    
+    bool success = cbs_planner::CBSPlanner::parseScenarioFile("test_scenario.scen", starts, goals);
+    
+    // Restore stderr
+    std::cerr.rdbuf(orig_cerr);
+    
+    // Should succeed because we have one valid line
+    EXPECT_TRUE(success);
+    EXPECT_EQ(starts.size(), 1);
+    EXPECT_EQ(goals.size(), 1);
+    
+    // Verify the one valid agent was parsed correctly
+    EXPECT_EQ(starts[0], std::make_pair(0, 2)); // (x=2,y=0) -> (row=0,col=2)
+    EXPECT_EQ(goals[0], std::make_pair(4, 4));   // (x=4,y=4) -> (row=4,col=4)
+    
+    // Verify warnings were printed
+    std::string stderr_output = captured_cerr.str();
+    EXPECT_TRUE(stderr_output.find("Warning: Line in scenario file has 6 elements") != std::string::npos);
+    EXPECT_TRUE(stderr_output.find("Warning: Line in scenario file has 11 elements") != std::string::npos);
+    EXPECT_TRUE(stderr_output.find("Warning: Line in scenario file has 7 elements") != std::string::npos);
+    EXPECT_TRUE(stderr_output.find("Warning: Line in scenario file has 10 elements") != std::string::npos);
+}
