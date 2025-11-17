@@ -300,108 +300,105 @@ bool Instance::loadMap()
 		printMap();
 		return true;
 	}
-	else if (line[0] == 't') // Nathan's benchmark
+	else 
 	{
-		char_separator<char> sep(" ");
-		getline(myfile, line);
-		tokenizer<char_separator<char>> tok(line, sep);
-		auto beg = tok.begin();
-		if (beg == tok.end())
+		if (line[0] == 't') // Nathan's benchmark
 		{
-			setError("Invalid Nathan's benchmark format");
-			myfile.close();
-			return false;
+			char_separator<char> sep(" ");
+			getline(myfile, line);
+			tokenizer<char_separator<char>> tok(line, sep);
+			auto beg = tok.begin();
+			if (beg == tok.end())
+			{
+				setError("Invalid Nathan's benchmark format");
+				myfile.close();
+				return false;
+			}
+			beg++;
+			if (beg == tok.end())
+			{
+				setError("Missing number of rows in Nathan's format");
+				myfile.close();
+				return false;
+			}
+			num_of_rows = atoi((*beg).c_str());
+			
+			getline(myfile, line);
+			tokenizer<char_separator<char>> tok2(line, sep);
+			beg = tok2.begin();
+			if (beg == tok2.end())
+			{
+				setError("Invalid Nathan's benchmark format line 2");
+				myfile.close();
+				return false;
+			}
+			beg++;
+			if (beg == tok2.end())
+			{
+				setError("Missing number of cols in Nathan's format");
+				myfile.close();
+				return false;
+			}
+			num_of_cols = atoi((*beg).c_str());
+			getline(myfile, line); // skip "map"
 		}
-		beg++;
-		if (beg == tok.end())
+		else // my benchmark
 		{
-			setError("Missing number of rows in Nathan's format");
-			myfile.close();
-			return false;
+			char_separator<char> sep(",");
+			tokenizer<char_separator<char>> tok(line, sep);
+			auto beg = tok.begin();
+			if (beg == tok.end())
+			{
+				setError("Invalid custom benchmark format");
+				myfile.close();
+				return false;
+			}
+			num_of_rows = atoi((*beg).c_str());
+			beg++;
+			if (beg == tok.end())
+			{
+				setError("Missing number of cols in custom format");
+				myfile.close();
+				return false;
+			}
+			num_of_cols = atoi((*beg).c_str());
 		}
-		num_of_rows = atoi((*beg).c_str());
 		
-		getline(myfile, line);
-		tokenizer<char_separator<char>> tok2(line, sep);
-		beg = tok2.begin();
-		if (beg == tok2.end())
+		if (!validateDimensions())
 		{
-			setError("Invalid Nathan's benchmark format line 2");
 			myfile.close();
 			return false;
 		}
-		beg++;
-		if (beg == tok2.end())
+		
+		map_size = num_of_cols * num_of_rows;
+		my_map.resize(map_size, false);
+		
+		// read map (and start/goal locations)
+		for (int i = 0; i < num_of_rows; i++)
 		{
-			setError("Missing number of cols in Nathan's format");
-			myfile.close();
-			return false;
+			if (!getline(myfile, line))
+			{
+				setError("Insufficient map data at row " + to_string(i));
+				myfile.close();
+				return false;
+			}
+			
+			if ((int)line.length() < num_of_cols)
+			{
+				setError("Row " + to_string(i) + " has insufficient columns: " + to_string(line.length()) + " < " + to_string(num_of_cols));
+				myfile.close();
+				return false;
+			}
+			
+			for (int j = 0; j < num_of_cols; j++)
+			{
+				my_map[linearizeCoordinate(i, j)] = (line[j] != '.');
+			}
 		}
-		num_of_cols = atoi((*beg).c_str());
-		getline(myfile, line); // skip "map"
-	}
-	else // my benchmark
-	{
-		char_separator<char> sep(",");
-		tokenizer<char_separator<char>> tok(line, sep);
-		auto beg = tok.begin();
-		if (beg == tok.end())
-		{
-			setError("Invalid custom benchmark format");
-			myfile.close();
-			return false;
-		}
-		num_of_rows = atoi((*beg).c_str());
-		beg++;
-		if (beg == tok.end())
-		{
-			setError("Missing number of cols in custom format");
-			myfile.close();
-			return false;
-		}
-		num_of_cols = atoi((*beg).c_str());
-	}
-	
-	if (!validateDimensions())
-	{
 		myfile.close();
-		return false;
+		printMap();
+		return true;
 	}
-	
-	map_size = num_of_cols * num_of_rows;
-	my_map.resize(map_size, false);
-	
-	// read map (and start/goal locations)
-	for (int i = 0; i < num_of_rows; i++)
-	{
-		if (!getline(myfile, line))
-		{
-			setError("Insufficient map data at row " + to_string(i));
-			myfile.close();
-			return false;
-		}
-		
-		if ((int)line.length() < num_of_cols)
-		{
-			setError("Row " + to_string(i) + " has insufficient columns: " + to_string(line.length()) + " < " + to_string(num_of_cols));
-			myfile.close();
-			return false;
-		}
-		
-		for (int j = 0; j < num_of_cols; j++)
-		{
-			my_map[linearizeCoordinate(i, j)] = (line[j] != '.');
-		}
-	}
-	myfile.close();
-
-	// initialize moves_offset array
-	/*moves_offset[Instance::valid_moves_t::WAIT_MOVE] = 0;
-	moves_offset[Instance::valid_moves_t::NORTH] = -num_of_cols;
-	moves_offset[Instance::valid_moves_t::EAST] = 1;
-	moves_offset[Instance::valid_moves_t::SOUTH] = num_of_cols;
-	moves_offset[Instance::valid_moves_t::WEST] = -1;*/
-	return true;
 }
 
 
@@ -773,6 +770,7 @@ bool Instance::parsePGMASCII(ifstream& file)
 	
 	return true;
 }
+
 list<int> Instance::getNeighbors(int curr) const
 {
 	list<int> neighbors;
