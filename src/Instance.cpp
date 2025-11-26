@@ -687,7 +687,10 @@ bool Instance::parsePGMBinary(ifstream& file)
 	
 	for (int i = 0; i < map_size; i++)
 	{
-		my_map[i] = (data[i] != 254); // 254 is free space
+		int file_row = i / num_of_cols;
+		int col = i % num_of_cols;
+		int map_row = num_of_rows - 1 - file_row;
+		my_map[linearizeCoordinate(map_row, col)] = (data[i] != 254); // 254 is free space
 	}
 	
 	return true;
@@ -763,7 +766,9 @@ bool Instance::parsePGMASCII(ifstream& file)
 			}
 			
 			int pixel_value = atoi((*beg).c_str());
-			my_map[linearizeCoordinate(i, j)] = (pixel_value < 254); // Values >= 254 are free space, < 254 are obstacles
+			// Flip Y: File row 'i' corresponds to Map row 'num_of_rows - 1 - i'
+			int map_row = num_of_rows - 1 - i;
+			my_map[linearizeCoordinate(map_row, j)] = (pixel_value < 254); // Values >= 254 are free space, < 254 are obstacles
 			beg++;
 		}
 	}
