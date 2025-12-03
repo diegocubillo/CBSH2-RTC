@@ -739,7 +739,8 @@ string CBS::getSolverName() const
 		name += "+M";
 	if (bypass)
 		name += "+BP";
-	name += " with " + search_engines[0]->getName();
+	if (!search_engines.empty() && search_engines[0] != nullptr)
+		name += " with " + search_engines[0]->getName();
 	return name;
 }
 
@@ -1053,7 +1054,9 @@ bool CBS::solve(double _time_limit, int _cost_lowerbound, int _cost_upperbound)
 	{
 		cout << "Solution invalid!!!" << endl;
 		printPaths();
-		exit(-1);
+		// Instead of exiting, mark as failed and return
+		solution_found = false;
+		return false;
 	}
 	if (screen == 2)
         printPaths();

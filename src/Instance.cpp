@@ -2,7 +2,10 @@
 #include <algorithm>    // std::shuffle
 #include <random>      // std::default_random_engine
 #include <chrono>       // std::chrono::system_clock
+#include <string>       // std::to_string
 #include"Instance.h"
+
+using std::to_string;
 
 int RANDOM_WALK_STEPS = 100000;
 
@@ -22,8 +25,8 @@ Instance::Instance(const string& map_fname, const string& agent_fname,
 		}
 		else
 		{
-			cerr << "Map file " << map_fname << " not found." << endl;
-			exit(-1);
+			setError("Map file " + map_fname + " not found and invalid parameters for random generation.");
+			return;
 		}
 	}
 
@@ -37,8 +40,8 @@ Instance::Instance(const string& map_fname, const string& agent_fname,
 		}
 		else
 		{
-			cerr << "Agent file " << agent_fname << " not found." << endl;
-			exit(-1);
+			setError("Agent file " + agent_fname + " not found and num_of_agents is not positive for random generation.");
+			return;
 		}
 	}
 
@@ -241,148 +244,161 @@ bool Instance::loadMap()
 {
 	using namespace boost;
 	using namespace std;
+	
 	ifstream myfile(map_fname.c_str());
 	if (!myfile.is_open())
 		return false;
-	string line;
-	tokenizer<char_separator<char>>::iterator beg;
-	getline(myfile, line);
 	
-	// Check for invalid PGM magic numbers
-	if (line.length() >= 2 && line[0] == 'P' && line.substr(0, 2) != "P2" && line.substr(0, 2) != "P5")
+	string line;
+	if (!getline(myfile, line))
 	{
+		setError("Empty map file or read error");
 		myfile.close();
-		return false; // Invalid PGM format
+		return false;
 	}
 	
-	if (line.substr(0, 2) == "P5") // .pgm file in binary mode
+	// Validate PGM header
+	if (line.length() >= 2 && line[0] == 'P')
 	{
-		while (getline(myfile, line))
-        {
-            // Skip comment lines and empty/whitespace-only lines
-            if (line.empty() || line[0] == '#' || line.find_first_not_of(" \t\r\n") == string::npos)
-                continue;
-            char_separator<char> sep(" ");
-            tokenizer<char_separator<char>> tok(line, sep);
-            beg = tok.begin();
-            num_of_cols = atoi((*beg).c_str()); // read number of cols
-            beg++;
-            num_of_rows = atoi((*beg).c_str()); // read number of rows
-            break;
-        }
-		while (getline(myfile, line)) // skip the max value line and any empty lines
+		if (!isValidPGMHeader(line))
 		{
-			if (!line.empty() && line.find_first_not_of(" \t\r\n") != string::npos)
-				break;
+			setError("Invalid PGM format: " + line);
+			myfile.close();
+			return false;
 		}
-
-		map_size = num_of_cols * num_of_rows;
-    my_map.resize(map_size, false);
-
-		// Read binary data
-    vector<unsigned char> data(map_size);
-    myfile.read(reinterpret_cast<char*>(data.data()), map_size);
-    for (int i = 0; i < map_size; i++)
-        {
-        my_map[i] = (data[i] != 254 ); // Assuming 254 is free space and the rest is an obstacle
-    }
+		
+		if (line.substr(0, 2) == "P5") // Binary PGM
+		{
+			if (!parseMapDimensions(myfile, line) || !validateDimensions())
+			{
+				myfile.close();
+				return false;
+			}
+			
+			if (!parsePGMBinary(myfile))
+			{
+				myfile.close();
+				return false;
+			}
+		}
+		else if (line.substr(0, 2) == "P2") // ASCII PGM
+		{
+			if (!parseMapDimensions(myfile, line) || !validateDimensions())
+			{
+				myfile.close();
+				return false;
+			}
+			
+			if (!parsePGMASCII(myfile))
+			{
+				myfile.close();
+				return false;
+			}
+		}
+		
 		myfile.close();
 		printMap();
 		return true;
 	}
-	else if (line.substr(0, 2) == "P2") // .pgm file in ASCII mode
+	else 
 	{
-		while (getline(myfile, line))
-        {
-            // Skip comment lines and empty/whitespace-only lines
-            if (line.empty() || line[0] == '#' || line.find_first_not_of(" \t\r\n") == string::npos)
-                continue;
-            char_separator<char> sep(" ");
-            tokenizer<char_separator<char>> tok(line, sep);
-            beg = tok.begin();
-            num_of_cols = atoi((*beg).c_str()); // read number of cols
-            beg++;
-            num_of_rows = atoi((*beg).c_str()); // read number of rows
-            break;
-        }
-		while (getline(myfile, line)) // skip the max value line and any empty lines
+		if (line[0] == 't') // Nathan's benchmark
 		{
-			if (!line.empty() && line.find_first_not_of(" \t\r\n") != string::npos)
-				break;
+			char_separator<char> sep(" ");
+			getline(myfile, line);
+			tokenizer<char_separator<char>> tok(line, sep);
+			auto beg = tok.begin();
+			if (beg == tok.end())
+			{
+				setError("Invalid Nathan's benchmark format");
+				myfile.close();
+				return false;
+			}
+			beg++;
+			if (beg == tok.end())
+			{
+				setError("Missing number of rows in Nathan's format");
+				myfile.close();
+				return false;
+			}
+			num_of_rows = atoi((*beg).c_str());
+			
+			getline(myfile, line);
+			tokenizer<char_separator<char>> tok2(line, sep);
+			beg = tok2.begin();
+			if (beg == tok2.end())
+			{
+				setError("Invalid Nathan's benchmark format line 2");
+				myfile.close();
+				return false;
+			}
+			beg++;
+			if (beg == tok2.end())
+			{
+				setError("Missing number of cols in Nathan's format");
+				myfile.close();
+				return false;
+			}
+			num_of_cols = atoi((*beg).c_str());
+			getline(myfile, line); // skip "map"
 		}
-
+		else // my benchmark
+		{
+			char_separator<char> sep(",");
+			tokenizer<char_separator<char>> tok(line, sep);
+			auto beg = tok.begin();
+			if (beg == tok.end())
+			{
+				setError("Invalid custom benchmark format");
+				myfile.close();
+				return false;
+			}
+			num_of_rows = atoi((*beg).c_str());
+			beg++;
+			if (beg == tok.end())
+			{
+				setError("Missing number of cols in custom format");
+				myfile.close();
+				return false;
+			}
+			num_of_cols = atoi((*beg).c_str());
+		}
+		
+		if (!validateDimensions())
+		{
+			myfile.close();
+			return false;
+		}
+		
 		map_size = num_of_cols * num_of_rows;
-    	my_map.resize(map_size, false);
-
-		// Read ASCII pixel data
+		my_map.resize(map_size, false);
+		
+		// read map (and start/goal locations)
 		for (int i = 0; i < num_of_rows; i++)
 		{
-			// Skip empty lines and get the next line with data
-			do {
-				getline(myfile, line);
-			} while (line.empty() || line.find_first_not_of(" \t\r\n") == string::npos);
+			if (!getline(myfile, line))
+			{
+				setError("Insufficient map data at row " + to_string(i));
+				myfile.close();
+				return false;
+			}
 			
-			char_separator<char> sep(" ");
-			tokenizer<char_separator<char>> tok(line, sep);
-			beg = tok.begin();
+			if ((int)line.length() < num_of_cols)
+			{
+				setError("Row " + to_string(i) + " has insufficient columns: " + to_string(line.length()) + " < " + to_string(num_of_cols));
+				myfile.close();
+				return false;
+			}
+			
 			for (int j = 0; j < num_of_cols; j++)
 			{
-				if (beg != tok.end())
-				{
-					int pixel_value = atoi((*beg).c_str());
-					my_map[linearizeCoordinate(i, j)] = (pixel_value != 254); // 254 is free space
-					beg++;
-				}
+				my_map[linearizeCoordinate(i, j)] = (line[j] != '.');
 			}
 		}
 		myfile.close();
 		printMap();
 		return true;
 	}
-	else if (line[0] == 't') // Nathan's benchmark
-	{
-		char_separator<char> sep(" ");
-		getline(myfile, line);
-		tokenizer<char_separator<char>> tok(line, sep);
-		beg = tok.begin();
-		beg++;
-		num_of_rows = atoi((*beg).c_str()); // read number of rows
-		getline(myfile, line);
-		tokenizer<char_separator<char>> tok2(line, sep);
-		beg = tok2.begin();
-		beg++;
-		num_of_cols = atoi((*beg).c_str()); // read number of cols
-		getline(myfile, line); // skip "map"
-	}
-	else // my benchmark
-	{
-		char_separator<char> sep(",");
-		tokenizer<char_separator<char>> tok(line, sep);
-		beg = tok.begin();
-		num_of_rows = atoi((*beg).c_str()); // read number of rows
-		beg++;
-		num_of_cols = atoi((*beg).c_str()); // read number of cols
-	}
-	map_size = num_of_cols * num_of_rows;
-	my_map.resize(map_size, false);
-	// read map (and start/goal locations)
-	for (int i = 0; i < num_of_rows; i++)
-	{
-		getline(myfile, line);
-		for (int j = 0; j < num_of_cols; j++)
-		{
-			my_map[linearizeCoordinate(i, j)] = (line[j] != '.');
-		}
-	}
-	myfile.close();
-
-	// initialize moves_offset array
-	/*moves_offset[Instance::valid_moves_t::WAIT_MOVE] = 0;
-	moves_offset[Instance::valid_moves_t::NORTH] = -num_of_cols;
-	moves_offset[Instance::valid_moves_t::EAST] = 1;
-	moves_offset[Instance::valid_moves_t::SOUTH] = num_of_cols;
-	moves_offset[Instance::valid_moves_t::WEST] = -1;*/
-	return true;
 }
 
 
@@ -427,6 +443,47 @@ void Instance::saveMap() const
 }
 
 
+
+void Instance::saveMapPGM(const string& fname) const
+{
+	ofstream myfile;
+	myfile.open(fname);
+	if (!myfile.is_open())
+	{
+		cout << "Fail to save the map to " << fname << endl;
+		return;
+	}
+	
+	// PGM ASCII Header
+	myfile << "P2" << endl;
+	myfile << "# Created by CBSH2-RTC" << endl;
+	myfile << num_of_cols << " " << num_of_rows << endl;
+	myfile << "255" << endl; // Max value
+	
+	for (int i = 0; i < num_of_rows; i++)
+	{
+		for (int j = 0; j < num_of_cols; j++)
+		{
+			// Flip Y: Map row 'i' corresponds to PGM row 'num_of_rows - 1 - i'
+			// But wait, standard PGM usually starts top-left.
+			// Let's check loadMap PGM parsing:
+			// "Flip Y: File row 'i' corresponds to Map row 'num_of_rows - 1 - i'"
+			// So when saving, we should do the reverse:
+			// File row 'i' should come from Map row 'num_of_rows - 1 - i'
+			
+			int map_row = num_of_rows - 1 - i;
+			if (my_map[linearizeCoordinate(map_row, j)])
+				myfile << "0 "; // Obstacle (black)
+			else
+				myfile << "255 "; // Free space (white)
+		}
+		myfile << endl;
+	}
+	myfile.close();
+}
+
+
+
 bool Instance::loadAgents()
 {
 	using namespace std;
@@ -442,8 +499,8 @@ bool Instance::loadAgents()
 	{
 		if (num_of_agents == 0)
 		{
-			cerr << "The number of agents should be larger than 0" << endl;
-			exit(-1);
+			setError("The number of agents should be larger than 0");
+			return false;
 		}
 		start_locations.resize(num_of_agents);
 		goal_locations.resize(num_of_agents);
@@ -458,7 +515,10 @@ bool Instance::loadAgents()
 			{
 				ids[i] = atoi(c.c_str());
 				if (i > 0 && ids[i] <= ids[i - 1])
-					exit(-1); // the indices of the agents should be strictly increasing!
+				{
+					setError("The indices of the agents should be strictly increasing");
+					return false;
+				}
 				i++;
 			}
 		}
@@ -552,10 +612,210 @@ void Instance::saveAgents() const
 	myfile << num_of_agents << endl;
 	for (int i = 0; i < num_of_agents; i++)
 		myfile << getRowCoordinate(start_locations[i]) << "," << getColCoordinate(start_locations[i]) << ","
-			   << getRowCoordinate(goal_locations[i]) << "," << getColCoordinate(goal_locations[i]) << "," << endl;
+			<< getRowCoordinate(goal_locations[i]) << "," << getColCoordinate(goal_locations[i]) << "," << endl;
 	myfile.close();
 }
 
+// Safe PGM parsing helper methods
+bool Instance::isValidPGMHeader(const string& magic) const
+{
+	if (magic.length() < 2 || magic[0] != 'P')
+		return false;
+	
+	return (magic.substr(0, 2) == "P2" || magic.substr(0, 2) == "P5");
+}
+
+bool Instance::parseMapDimensions(ifstream& file, string& line)
+{
+	using namespace boost;
+	
+	// Skip comments and empty lines to find dimensions
+	int lines_read = 0;
+	while (getline(file, line) && lines_read < 100) // Prevent infinite loops
+	{
+		lines_read++;
+		
+		// Skip comment lines and empty/whitespace-only lines
+		if (line.empty() || line[0] == '#' || line.find_first_not_of(" \t\r\n") == string::npos)
+			continue;
+			
+		// Handle inline comments - remove everything after '#' 
+		size_t comment_pos = line.find('#');
+		if (comment_pos != string::npos)
+		{
+			line = line.substr(0, comment_pos);
+			// Re-check if line is now empty after removing inline comment
+			if (line.empty() || line.find_first_not_of(" \t\r\n") == string::npos)
+				continue;
+		}
+			
+		char_separator<char> sep(" ");
+		tokenizer<char_separator<char>> tok(line, sep);
+		auto beg = tok.begin();
+		
+		if (beg == tok.end())
+		{
+			setError("Invalid dimension line format");
+			return false;
+		}
+		
+		num_of_cols = atoi((*beg).c_str());
+		beg++;
+		
+		if (beg == tok.end())
+		{
+			setError("Missing number of rows in PGM");
+			return false;
+		}
+		
+		num_of_rows = atoi((*beg).c_str());
+		return true;
+	}
+	
+	setError("Could not find valid dimensions in PGM file after " + to_string(lines_read) + " lines");
+	return false;
+}
+
+bool Instance::validateDimensions() const
+{
+	if (num_of_rows <= 0 || num_of_cols <= 0)
+	{
+		setError("Invalid map dimensions: " + to_string(num_of_rows) + "x" + to_string(num_of_cols));
+		return false;
+	}
+	
+	if (num_of_rows > 10000 || num_of_cols > 10000)
+	{
+		setError("Map dimensions too large: " + to_string(num_of_rows) + "x" + to_string(num_of_cols));
+		return false;
+	}
+	
+	return true;
+}
+
+bool Instance::parsePGMBinary(ifstream& file)
+{
+	using namespace std;
+	
+	string line;
+	// Skip max value line and any empty lines
+	int lines_read = 0;
+	while (getline(file, line) && lines_read < 10)
+	{
+		lines_read++;
+		if (!line.empty() && line.find_first_not_of(" \t\r\n") != string::npos)
+			break;
+	}
+	
+	map_size = num_of_cols * num_of_rows;
+	if (map_size <= 0 || map_size > 100000000) // 100M limit
+	{
+		setError("Invalid map size for binary PGM: " + to_string(map_size));
+		return false;
+	}
+	
+	my_map.resize(map_size, false);
+	
+	// Read binary data with bounds checking
+	vector<unsigned char> data(map_size);
+	file.read(reinterpret_cast<char*>(data.data()), map_size);
+	
+	if (file.gcount() != map_size)
+	{
+		setError("Insufficient binary data: expected " + to_string(map_size) + " bytes, got " + to_string(file.gcount()));
+		return false;
+	}
+	
+	for (int i = 0; i < map_size; i++)
+	{
+		int file_row = i / num_of_cols;
+		int col = i % num_of_cols;
+		int map_row = num_of_rows - 1 - file_row;
+		my_map[linearizeCoordinate(map_row, col)] = (data[i] != 254); // 254 is free space
+	}
+	
+	return true;
+}
+
+bool Instance::parsePGMASCII(ifstream& file)
+{
+	using namespace boost;
+	using namespace std;
+	
+	string line;
+	// Skip max value line and any empty lines  
+	int lines_read = 0;
+	while (getline(file, line) && lines_read < 10)
+	{
+		lines_read++;
+		if (!line.empty() && line.find_first_not_of(" \t\r\n") != string::npos)
+			break;
+	}
+	
+	map_size = num_of_cols * num_of_rows;
+	if (map_size <= 0 || map_size > 100000000) // 100M limit
+	{
+		setError("Invalid map size for ASCII PGM: " + to_string(map_size));
+		return false;
+	}
+	
+	my_map.resize(map_size, false);
+	
+	// Read ASCII pixel data with bounds checking
+	for (int i = 0; i < num_of_rows; i++)
+	{
+		// Skip empty lines and get the next line with data
+		int empty_lines = 0;
+		do {
+			if (!getline(file, line))
+			{
+				setError("Insufficient ASCII data at row " + to_string(i));
+				return false;
+			}
+			empty_lines++;
+		} while ((line.empty() || line.find_first_not_of(" \t\r\n") == string::npos) && empty_lines < 10);
+		
+		if (empty_lines >= 10)
+		{
+			setError("Too many empty lines at row " + to_string(i));
+			return false;
+		}
+		
+		// Handle inline comments - remove everything after '#'
+		size_t comment_pos = line.find('#');
+		if (comment_pos != string::npos)
+		{
+			line = line.substr(0, comment_pos);
+			// Re-check if line is now empty after removing inline comment
+			if (line.empty() || line.find_first_not_of(" \t\r\n") == string::npos)
+			{
+				setError("Line became empty after removing inline comment at row " + to_string(i));
+				return false;
+			}
+		}
+		
+		char_separator<char> sep(" ");
+		tokenizer<char_separator<char>> tok(line, sep);
+		auto beg = tok.begin();
+		
+		for (int j = 0; j < num_of_cols; j++)
+		{
+			if (beg == tok.end())
+			{
+				setError("Insufficient pixel data at row " + to_string(i) + ", col " + to_string(j));
+				return false;
+			}
+			
+			int pixel_value = atoi((*beg).c_str());
+			// Flip Y: File row 'i' corresponds to Map row 'num_of_rows - 1 - i'
+			int map_row = num_of_rows - 1 - i;
+			my_map[linearizeCoordinate(map_row, j)] = (pixel_value < 254); // Values >= 254 are free space, < 254 are obstacles
+			beg++;
+		}
+	}
+	
+	return true;
+}
 
 list<int> Instance::getNeighbors(int curr) const
 {

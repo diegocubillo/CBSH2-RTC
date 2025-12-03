@@ -1,6 +1,9 @@
 #pragma once
 
 #include"common.h"
+#include <fstream>
+
+using std::ifstream;
 
 
 // Currently only works for undirected unweighted 4-neighbor grids
@@ -11,12 +14,22 @@ public:
 	int num_of_rows = 0;
 	int map_size = 0;
 
+	// Error handling fields (mutable for const methods)
+	mutable bool has_error = false;
+	mutable string error_message = "";
+
 	Instance() = default;
 	Instance(const string& map_fname, const string& agent_fname, 
 		int num_of_agents = 0, const string& agent_indices = "",
 		int num_of_rows = 0, int num_of_cols = 0, int num_of_obstacles = 0, int warehouse_width = 0);
 
+	// Check if instance was created successfully
+	bool isValid() const { return !has_error; }
+	string getErrorMessage() const { return error_message; }
+
 	void printAgents() const;
+	void saveMapPGM(const string& fname) const;
+
 
 
 	inline bool isObstacle(int loc) const { return my_map[loc]; }
@@ -110,6 +123,19 @@ private:
 	  int num_of_agents = 0;
 	  vector<int> start_locations;
 	  vector<int> goal_locations;
+
+	// Error handling
+	void setError(const string& message) const {
+		has_error = true;
+		error_message = message;
+	}
+	
+	// Safe PGM parsing methods
+	bool isValidPGMHeader(const string& magic) const;
+	bool parseMapDimensions(ifstream& file, string& line);
+	bool validateDimensions() const;
+	bool parsePGMBinary(ifstream& file);
+	bool parsePGMASCII(ifstream& file);
 
 	bool loadMap();
 	void printMap() const;
