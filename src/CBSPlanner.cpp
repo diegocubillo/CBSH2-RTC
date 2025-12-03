@@ -15,8 +15,40 @@
 #include <sstream>
 #include <algorithm>
 #include <iostream>
+#include <sys/stat.h>
 
 namespace cbs_planner {
+
+// Helper to check if file exists
+inline bool fileExists(const std::string& name) {
+    struct stat buffer;   
+    return (stat (name.c_str(), &buffer) == 0); 
+}
+
+// Helper to get unique filename
+std::string getUniqueFilename(const std::string& base_name) {
+    if (!fileExists(base_name)) {
+        return base_name;
+    }
+    
+    // Split extension
+    std::string name = base_name;
+    std::string ext = "";
+    size_t last_dot = base_name.find_last_of(".");
+    if (last_dot != std::string::npos) {
+        name = base_name.substr(0, last_dot);
+        ext = base_name.substr(last_dot);
+    }
+    
+    int index = 1;
+    while (true) {
+        std::string candidate = name + "-" + std::to_string(index) + ext;
+        if (!fileExists(candidate)) {
+            return candidate;
+        }
+        index++;
+    }
+}
 
 /**
  * @brief Private implementation class (PIMPL pattern)
@@ -412,20 +444,44 @@ bool CBSPlanner::parseScenarioFile(const std::string& scenario_file,
             elements.push_back(element);
         }
         
-        // Check if we have exactly 9 elements
-        if (elements.size() != 9) {
-            std::cerr << "Warning: Line in scenario file has " << elements.size() 
-                      << " elements instead of expected 9: \"" << line << "\"" << std::endl;
-            continue;
-        }
+
         
-        // Parse the line: bucket map width height startx starty goalx goaly distance
-        if (iss >> bucket >> map_name >> width >> height >> start_x >> start_y >> goal_x >> goal_y >> distance) {
-            starts.push_back({start_y, start_x}); // Note: .scen uses (x,y), we use (row,col)
-            goals.push_back({goal_y, goal_x});
+        // Parse the line
+        if (elements.size() == 9) {
+            // Nathan's benchmark: bucket map width height startx starty goalx goaly distance
+            if (iss >> bucket >> map_name >> width >> height >> start_x >> start_y >> goal_x >> goal_y >> distance) {
+                starts.push_back({start_y, start_x}); // Note: .scen uses (x,y), we use (row,col)
+                goals.push_back({goal_y, goal_x});
+            }
+        } else if (elements.size() == 4) {
+             // Minimalist format (space separated): start_row start_col goal_row goal_col
+             int s_r, s_c, g_r, g_c;
+             if (iss >> s_r >> s_c >> g_r >> g_c) {
+                 starts.push_back({s_r, s_c});
+                 goals.push_back({g_r, g_c});
+             }
+        } else if (elements.size() == 1 && line.find(',') != std::string::npos) {
+             // Minimalist format (comma separated): start_row,start_col,goal_row,goal_col
+             // Replace commas with spaces
+             std::string processed_line = line;
+             for (char& c : processed_line) {
+                 if (c == ',') c = ' ';
+             }
+             std::istringstream comma_iss(processed_line);
+             int s_r, s_c, g_r, g_c;
+             if (comma_iss >> s_r >> s_c >> g_r >> g_c) {
+                 starts.push_back({s_r, s_c});
+                 goals.push_back({g_r, g_c});
+             }
         } else {
             // This shouldn't happen if we have exactly 9 elements, but handle it just in case
-            std::cerr << "Warning: Failed to parse line with 9 elements: \"" << line << "\"" << std::endl;
+            // Only warn if it's not a single number (like agent count)
+            if (elements.size() == 1 && std::all_of(elements[0].begin(), elements[0].end(), ::isdigit)) {
+                // Likely agent count line, ignore silently
+                continue;
+            }
+            
+            std::cerr << "Warning: Failed to parse line with " << elements.size() << " elements: \"" << line << "\"" << std::endl;
             continue;
         }
     }
@@ -434,6 +490,53 @@ bool CBSPlanner::parseScenarioFile(const std::string& scenario_file,
     
     // Verify we parsed some agents
     return !starts.empty() && starts.size() == goals.size();
+}
+
+bool CBSPlanner::generateRandomScenario(const std::string& map_file, 
+                                      int num_agents, 
+                                      const std::string& output_file) {
+    try {
+        // Use Instance to generate agents
+        // Instance constructor: map_fname, agent_fname, num_agents, agent_indices, rows, cols, obs, warehouse_width
+        // We pass 0 for rows/cols/obs to indicate we are loading an existing map
+        
+        std::string actual_output_file = getUniqueFilename(output_file);
+        
+        // Create instance with the target output file as agent_fname
+        // Instance will try to load it, fail, and then generate random agents because num_agents > 0
+        Instance instance(map_file, actual_output_file, num_agents, "", 0, 0, 0, 0);
+        
+        // Instance constructor automatically saves agents if generation was triggered
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Error generating scenario: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool CBSPlanner::generateRandomInstance(int rows, int cols, int obstacles, 
+                                      int num_agents, 
+                                      const std::string& output_map_file, 
+                                      const std::string& output_scen_file) {
+    try {
+        std::string actual_map_file = getUniqueFilename(output_map_file);
+        std::string actual_scen_file = getUniqueFilename(output_scen_file);
+        
+        // Create instance with parameters for random generation
+        // Instance constructor will generate map (because map file doesn't exist)
+        // and then generate agents
+        Instance instance(actual_map_file, actual_scen_file, num_agents, "", rows, cols, obstacles, 0);
+        
+        // Explicitly save map in PGM format as requested
+        instance.saveMapPGM(actual_map_file);
+        
+        // Agents are automatically saved by Instance constructor
+        
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "Error generating instance: " << e.what() << std::endl;
+        return false;
+    }
 }
 
 } // namespace cbs_planner

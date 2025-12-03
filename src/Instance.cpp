@@ -443,6 +443,47 @@ void Instance::saveMap() const
 }
 
 
+
+void Instance::saveMapPGM(const string& fname) const
+{
+	ofstream myfile;
+	myfile.open(fname);
+	if (!myfile.is_open())
+	{
+		cout << "Fail to save the map to " << fname << endl;
+		return;
+	}
+	
+	// PGM ASCII Header
+	myfile << "P2" << endl;
+	myfile << "# Created by CBSH2-RTC" << endl;
+	myfile << num_of_cols << " " << num_of_rows << endl;
+	myfile << "255" << endl; // Max value
+	
+	for (int i = 0; i < num_of_rows; i++)
+	{
+		for (int j = 0; j < num_of_cols; j++)
+		{
+			// Flip Y: Map row 'i' corresponds to PGM row 'num_of_rows - 1 - i'
+			// But wait, standard PGM usually starts top-left.
+			// Let's check loadMap PGM parsing:
+			// "Flip Y: File row 'i' corresponds to Map row 'num_of_rows - 1 - i'"
+			// So when saving, we should do the reverse:
+			// File row 'i' should come from Map row 'num_of_rows - 1 - i'
+			
+			int map_row = num_of_rows - 1 - i;
+			if (my_map[linearizeCoordinate(map_row, j)])
+				myfile << "0 "; // Obstacle (black)
+			else
+				myfile << "255 "; // Free space (white)
+		}
+		myfile << endl;
+	}
+	myfile.close();
+}
+
+
+
 bool Instance::loadAgents()
 {
 	using namespace std;

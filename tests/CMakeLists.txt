@@ -32,7 +32,9 @@ add_executable(cbs_tests
     test_results.cpp
     test_robustness.cpp
     test_scenario_parsing.cpp
-)    # Link libraries
+    test_generation.cpp
+)
+    # Link libraries
     target_link_libraries(cbs_tests 
         cbs_lib
         ${GTEST_LIBRARIES}

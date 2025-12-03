@@ -154,6 +154,35 @@ public:
                                 std::vector<Coordinate>& goals);
 
     /**
+     * @brief Generate random agents on an existing map and save to .scen file
+     * 
+     * @param map_file Path to the existing map file
+     * @param num_agents Number of agents to generate
+     * @param output_file Path to save the generated scenario (.scen)
+     * @return true if generation was successful
+     */
+    bool generateRandomScenario(const std::string& map_file, 
+                              int num_agents, 
+                              const std::string& output_file);
+
+    /**
+     * @brief Generate random map and agents, saving to .pgm and .scen files
+     * 
+     * @param rows Map height
+     * @param cols Map width
+     * @param obstacles Number of obstacles
+     * @param num_agents Number of agents to generate
+     * @param output_map_file Path to save the generated map (.pgm)
+     * @param output_scen_file Path to save the generated scenario (.scen)
+     * @return true if generation was successful
+     */
+    bool generateRandomInstance(int rows, int cols, int obstacles, 
+                              int num_agents, 
+                              const std::string& output_map_file, 
+                              const std::string& output_scen_file);
+
+
+    /**
      * @brief Get the default configuration
      */
     static Config getDefaultConfig();

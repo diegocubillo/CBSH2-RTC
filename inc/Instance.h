@@ -28,6 +28,8 @@ public:
 	string getErrorMessage() const { return error_message; }
 
 	void printAgents() const;
+	void saveMapPGM(const string& fname) const;
+
 
 
 	inline bool isObstacle(int loc) const { return my_map[loc]; }
