@@ -117,3 +117,43 @@ TEST_F(GenerationTest, ParseMinimalistFormat) {
     
     std::remove("test_minimalist.scen");
 }
+
+// Test 5: Generate Scenario with Fixed Starts
+TEST_F(GenerationTest, GenerateScenarioFixedStarts) {
+    // Create a dummy map
+    std::ofstream map_file("test_fixed_start_map.pgm");
+    map_file << "P2\n5 5\n255\n";
+    for(int i=0; i<5; ++i) map_file << "255 255 255 255 255\n";
+    map_file.close();
+
+    std::vector<cbs_planner::CBSPlanner::Coordinate> starts = {
+        {0, 0}, {4, 4}
+    };
+
+    bool success = planner->generateRandomScenario("test_fixed_start_map.pgm", starts, "test_fixed_start.scen");
+    
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(fileExists("test_fixed_start.scen"));
+
+    std::ifstream scen_file("test_fixed_start.scen");
+    std::string line;
+    std::getline(scen_file, line);
+    EXPECT_EQ(line, "version 1"); 
+
+    int agent_count = 0;
+    while(std::getline(scen_file, line)) {
+        if(line.empty()) continue;
+        std::stringstream ss(line);
+        int sr, sc, gr, gc;
+        if (ss >> sr >> sc >> gr >> gc) {
+            EXPECT_EQ(sr, starts[agent_count].first);
+            EXPECT_EQ(sc, starts[agent_count].second);
+            agent_count++;
+        }
+    }
+    EXPECT_EQ(agent_count, 2);
+
+    scen_file.close();
+    std::remove("test_fixed_start_map.pgm");
+    std::remove("test_fixed_start.scen");
+}

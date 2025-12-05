@@ -514,6 +514,81 @@ bool CBSPlanner::generateRandomScenario(const std::string& map_file,
     }
 }
 
+bool CBSPlanner::generateRandomScenario(const std::string& map_file,
+                                      const std::vector<Coordinate>& starts,
+                                      const std::string& output_file) {
+    if (starts.empty()) {
+        std::cerr << "Error: No start positions provided" << std::endl;
+        return false;
+    }
+
+    try {
+        std::string actual_output_file = getUniqueFilename(output_file);
+        
+        // Create a dummy agent file to allow minimal initialization of Instance
+        std::string temp_agent_file = "/tmp/cbs_temp_dummy.agents";
+        std::ofstream dummy(temp_agent_file);
+        if (!dummy.is_open()) return false;
+        dummy << "1\n0,0,0,0,0\n";
+        dummy.close();
+
+        // Load map with dummy agent file
+        // usage: Instance(map_name, agent_name, num_agents=0, agent_indices="", rows=0, cols=0, obs=0, warehouse_width=0)
+        Instance instance(map_file, temp_agent_file, 0, "", 0, 0, 0, 0);
+        std::remove(temp_agent_file.c_str());
+
+        if (!instance.isValid()) {
+            std::cerr << "Error loading map: " << instance.getErrorMessage() << std::endl;
+            return false;
+        }
+
+        std::ofstream out(actual_output_file);
+        if (!out.is_open()) {
+            std::cerr << "Error creating output file: " << actual_output_file << std::endl;
+            return false;
+        }
+
+        // Use version header to be safe, though 4-column format often has none or "version 1"
+        out << "version 1" << std::endl; 
+
+        for (const auto& start : starts) {
+            int start_linear = instance.linearizeCoordinate(start.first, start.second);
+            
+            // Validate start position
+            if (start.first < 0 || start.first >= instance.num_of_rows ||
+                start.second < 0 || start.second >= instance.num_of_cols ||
+                instance.isObstacle(start_linear)) {
+                std::cerr << "Invalid start position: (" << start.first << "," << start.second << ")" << std::endl;
+                out.close();
+                std::remove(actual_output_file.c_str());
+                return false;
+            }
+
+            // Generate reachable goal using random walk
+            // Using 100000 steps to ensure good dispersion
+            int goal_linear = instance.randomWalk(start_linear, 100000);
+            
+            // Retry if goal is same as start (simple check, try a few small walks if needed)
+            if (goal_linear == start_linear) {
+                goal_linear = instance.randomWalk(start_linear, 1000);
+            }
+
+            auto goal_coord = instance.getCoordinate(goal_linear);
+            
+            // Write in 4-column format: start_row start_col goal_row goal_col
+            out << start.first << " " << start.second << " " 
+                << goal_coord.first << " " << goal_coord.second << std::endl;
+        }
+        
+        out.close();
+        return true;
+
+    } catch (const std::exception& e) {
+        std::cerr << "Error generating scenario: " << e.what() << std::endl;
+        return false;
+    }
+}
+
 bool CBSPlanner::generateRandomInstance(int rows, int cols, int obstacles, 
                                       int num_agents, 
                                       const std::string& output_map_file, 

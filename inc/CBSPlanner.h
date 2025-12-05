@@ -166,6 +166,18 @@ public:
                               const std::string& output_file);
 
     /**
+     * @brief Generate random scenario with fixed start locations
+     * 
+     * @param map_file Path to the existing map file
+     * @param starts Vector of start coordinates (row, col)
+     * @param output_file Path to save the generated scenario (.scen)
+     * @return true if generation was successful
+     */
+    bool generateRandomScenario(const std::string& map_file,
+                              const std::vector<Coordinate>& starts,
+                              const std::string& output_file);
+
+    /**
      * @brief Generate random map and agents, saving to .pgm and .scen files
      * 
      * @param rows Map height

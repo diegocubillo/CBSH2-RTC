@@ -114,6 +114,9 @@ public:
 
 	int getDefaultNumberOfAgents() const { return num_of_agents; }
 
+	// Public random walk for external scenario generation
+	int randomWalk(int loc, int steps) const;
+
 private:
 	  // int moves_offset[MOVE_COUNT];
 	  vector<bool> my_map;
@@ -148,8 +151,6 @@ private:
 	  void generateRandomAgents(int warehouse_width);
 	  bool addObstacle(int obstacle); // add this obsatcle only if the map is still connected
 	  bool isConnected(int start, int goal) const; // run BFS to find a path between start and goal, return true if a path exists.
-
-	int randomWalk(int loc, int steps) const;
 
 	// Class  SingleAgentSolver can access private members of Node
 	friend class SingleAgentSolver;
