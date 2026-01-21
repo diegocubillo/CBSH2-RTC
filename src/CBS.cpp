@@ -759,7 +759,20 @@ bool CBS::solve(double _time_limit, int _cost_lowerbound, int _cost_upperbound)
 	// set timer
 	start = clock();
 
-	generateRoot();
+	bool root_generated = generateRoot();
+	
+	// Diagnostic logging
+	if (!root_generated) {
+		cerr << "[CBS::solve] generateRoot() failed - no initial paths found" << endl;
+		solution_cost = -2;
+		solution_found = false;
+		runtime = (double) (clock() - start) / CLOCKS_PER_SEC;
+		return false;
+	}
+	
+	if (open_list.empty()) {
+		cerr << "[CBS::solve] WARNING: open_list is empty after generateRoot()" << endl;
+	}
 
 	while (!open_list.empty() && !solution_found)
 	{
@@ -1151,7 +1164,13 @@ bool CBS::generateRoot()
 			paths_found_initially[i] = search_engines[i]->findPath(*dummy_start, initial_constraints[i], paths, i, 0);
 			if (paths_found_initially[i].empty())
 			{
-				cout << "No path exists for agent " << i << endl;
+				cout << "No path exists for agent " << i 
+				     << " (start_loc=" << search_engines[i]->start_location 
+				     << " [" << search_engines[i]->instance.getRowCoordinate(search_engines[i]->start_location)
+				     << "," << search_engines[i]->instance.getColCoordinate(search_engines[i]->start_location) << "]"
+				     << ", goal_loc=" << search_engines[i]->goal_location 
+				     << " [" << search_engines[i]->instance.getRowCoordinate(search_engines[i]->goal_location)
+				     << "," << search_engines[i]->instance.getColCoordinate(search_engines[i]->goal_location) << "])" << endl;
 				return false;
 			}
 			paths[i] = &paths_found_initially[i];

@@ -55,6 +55,8 @@ public:
 	void setDisjointSplitting(bool d) {disjoint_splitting = d; heuristic_helper.disjoint_splitting = d; }
 	void setBypass(bool b) { bypass = b; } // 2-agent solver for heuristic calculation does not need bypass strategy.
 	void setNodeLimit(int n) { node_limit = n; }
+	double getTimeLimit() const { return time_limit; }
+	int getNodeLimit() const { return node_limit; }
 	void setSavingStats(bool s) { save_stats = s; heuristic_helper.save_stats = s; }
 
 	////////////////////////////////////////////////////////////////////////////////////////////

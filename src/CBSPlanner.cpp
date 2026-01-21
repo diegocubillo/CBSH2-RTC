@@ -186,8 +186,36 @@ public:
             // Clean up temporary file
             std::remove(temp_path_file.c_str());
         } else {
-            result.error_message = success ? "Solution found but paths not available" : 
-                                           "No solution found within limits";
+            if (success) {
+                result.error_message = "Solution found but paths not available";
+            } else {
+                // Provide detailed failure reason based on CBS solver state
+                std::stringstream ss;
+                
+                // Check for timeout
+                if (cbs_solver->runtime >= cbs_solver->getTimeLimit()) {
+                    ss << "Timeout: exceeded time limit of " << cbs_solver->getTimeLimit() << " seconds";
+                }
+                // Check for node limit exceeded
+                else if (cbs_solver->num_HL_expanded > 0) {
+                    // CBS ran but didn't find solution
+                    ss << "Node limit exceeded: expanded " << cbs_solver->num_HL_expanded << " nodes";
+                }
+                // Check if tree was exhausted (solution_cost -2 means no solution exists)
+                else if (cbs_solver->solution_cost == -2) {
+                    ss << "No solution exists: search tree exhausted";
+                }
+                else {
+                    ss << "No solution found";
+                }
+                
+                // Add statistics
+                ss << " (runtime: " << std::fixed << std::setprecision(2) << cbs_solver->runtime << "s";
+                ss << ", expanded: " << cbs_solver->num_HL_expanded;
+                ss << ", generated: " << cbs_solver->num_HL_generated << ")";
+                
+                result.error_message = ss.str();
+            }
         }
         
         return result;

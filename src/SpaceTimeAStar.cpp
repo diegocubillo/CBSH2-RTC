@@ -31,10 +31,24 @@ Path SpaceTimeAStar::findPath(const CBSNode& node, const ConstraintTable& initia
 	ConstraintTable constraint_table(initial_constraints);
 	constraint_table.build(node, agent);
 	runtime_build_CT = (double) (clock() - starrt_time) / CLOCKS_PER_SEC;
-	if (constraint_table.length_min >= MAX_TIMESTEP ||
-		constraint_table.length_min > constraint_table.length_max ||  // the agent cannot reach its goal location
-		constraint_table.constrained(start_location, 0)) // the agent cannot stay at its start location
+	if (constraint_table.length_min >= MAX_TIMESTEP)
 	{
+		cerr << "[SpaceTimeAStar] Agent " << agent << " path empty: length_min >= MAX_TIMESTEP" << endl;
+		return Path();
+	}
+	if (constraint_table.length_min > constraint_table.length_max)
+	{
+		cerr << "[SpaceTimeAStar] Agent " << agent << " path empty: length_min(" 
+		     << constraint_table.length_min << ") > length_max(" 
+		     << constraint_table.length_max << ") - cannot reach goal" << endl;
+		return Path();
+	}
+	if (constraint_table.constrained(start_location, 0))
+	{
+		cerr << "[SpaceTimeAStar] Agent " << agent << " path empty: start_location " 
+		     << start_location << " (row=" << instance.getRowCoordinate(start_location) 
+		     << ", col=" << instance.getColCoordinate(start_location) 
+		     << ") is constrained at t=0" << endl;
 		return Path();
 	}
 
