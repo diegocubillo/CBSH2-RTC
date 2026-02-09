@@ -67,6 +67,10 @@ public:
 	uint64_t time_expanded;
 	uint64_t time_generated;
 
+	// CBS-TA extension fields for Task Assignment and Path Finding
+	bool is_root = false;  // True for root nodes in search forest (TAPF)
+	std::vector<int> task_assignment;  // task_assignment[agent] = goal_id (TAPF)
+
 
 	void clear();
 	void printConflictGraph(int num_of_agents) const;

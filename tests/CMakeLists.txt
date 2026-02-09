@@ -33,6 +33,8 @@ add_executable(cbs_tests
     test_robustness.cpp
     test_scenario_parsing.cpp
     test_generation.cpp
+    test_task_assignment.cpp
+    test_cbsta_planner.cpp
 )
     # Link libraries
     target_link_libraries(cbs_tests 
