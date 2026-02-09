@@ -35,6 +35,7 @@ add_executable(cbs_tests
     test_generation.cpp
     test_task_assignment.cpp
     test_cbsta_planner.cpp
+    test_tapf_repro.cpp
 )
     # Link libraries
     target_link_libraries(cbs_tests 
