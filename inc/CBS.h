@@ -58,6 +58,20 @@ public:
 	double getTimeLimit() const { return time_limit; }
 	int getNodeLimit() const { return node_limit; }
 	void setSavingStats(bool s) { save_stats = s; heuristic_helper.save_stats = s; }
+	
+	// Get the solution paths (only valid after solve() returns true)
+	std::vector<Path> getPaths() const {
+		std::vector<Path> result;
+		if (solution_found && !paths.empty()) {
+			result.resize(paths.size());
+			for (size_t i = 0; i < paths.size(); i++) {
+				if (paths[i] != nullptr) {
+					result[i] = *paths[i];
+				}
+			}
+		}
+		return result;
+	}
 
 	////////////////////////////////////////////////////////////////////////////////////////////
 	// Runs the algorithm until the problem is solved or time is exhausted 

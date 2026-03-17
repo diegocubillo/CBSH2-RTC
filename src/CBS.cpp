@@ -758,6 +758,8 @@ bool CBS::solve(double _time_limit, int _cost_lowerbound, int _cost_upperbound)
 	}
 	// set timer
 	start = clock();
+	solution_found = false;
+	solution_cost = -1;
 
 	bool root_generated = generateRoot();
 	
@@ -1094,6 +1096,7 @@ CBS::CBS(vector<SingleAgentSolver*>& search_engines,
 {
 	num_of_agents = (int) search_engines.size();
 	mutex_helper.search_engines = search_engines;
+	solution_found = false;
 }
 
 CBS::CBS(const Instance& instance, bool sipp, int screen) :
@@ -1127,6 +1130,7 @@ CBS::CBS(const Instance& instance, bool sipp, int screen) :
 	{
 		instance.printAgents();
 	}
+	solution_found = false;
 }
 
 bool CBS::generateRoot()
