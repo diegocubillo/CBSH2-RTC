@@ -78,9 +78,9 @@ public:
 	bool solve(double time_limit, int cost_lowerbound = 0, int cost_upperbound = MAX_COST);
 
 	CBS(const Instance& instance, bool sipp, int screen);
-	CBS(vector<SingleAgentSolver*>& search_engines,
-		const vector<ConstraintTable>& constraints,
-		vector<Path>& paths_found_initially, int screen);
+	CBS(vector<SingleAgentSolver*>& engines_in,
+		const vector<ConstraintTable>& constraints_in,
+		vector<Path>& paths_in, int screen);
 	void clearSearchEngines();
 	~CBS();
 
@@ -93,12 +93,12 @@ public:
 	void clear(); // used for rapid random  restart
 
 private:
-	bool target_reasoning; // using target reasoning
-	bool disjoint_splitting; // disjoint splitting
-	bool mutex_reasoning; // using mutex reasoning
-	bool bypass; // using Bypass1
-	bool PC; // prioritize conflicts
-	bool save_stats;
+	bool target_reasoning = false; // using target reasoning
+	bool disjoint_splitting = false; // disjoint splitting
+	bool mutex_reasoning = false; // using mutex reasoning
+	bool bypass = false; // using Bypass1
+	bool PC = false; // prioritize conflicts
+	bool save_stats = false;
 
 	MDDTable mdd_helper;	
 	RectangleReasoning rectangle_helper;

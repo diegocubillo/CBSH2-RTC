@@ -48,46 +48,51 @@ CBSTA::CBSTA(const Instance& instance,
         cost_matrix_, allowed_matrix_);
 }
 
-CBSTA::~CBSTA() = default;
+CBSTA::~CBSTA() {
+    // Clean up search engines owned by the last CBS solver
+    if (cbs_solver_) {
+        cbs_solver_->clearSearchEngines();
+    }
+}
 
 void CBSTA::setHeuristicType(heuristics_type h) {
-    if (cbs_solver_) cbs_solver_->setHeuristicType(h);
+    cfg_heuristic_type_ = h;
 }
 
 void CBSTA::setPrioritizeConflicts(bool p) {
-    if (cbs_solver_) cbs_solver_->setPrioritizeConflicts(p);
+    cfg_PC_ = p;
 }
 
 void CBSTA::setRectangleReasoning(rectangle_strategy r) {
-    if (cbs_solver_) cbs_solver_->setRectangleReasoning(r);
+    cfg_rectangle_ = r;
 }
 
 void CBSTA::setCorridorReasoning(corridor_strategy c) {
-    if (cbs_solver_) cbs_solver_->setCorridorReasoning(c);
+    cfg_corridor_ = c;
 }
 
 void CBSTA::setTargetReasoning(bool t) {
-    if (cbs_solver_) cbs_solver_->setTargetReasoning(t);
+    cfg_target_reasoning_ = t;
 }
 
 void CBSTA::setMutexReasoning(bool m) {
-    if (cbs_solver_) cbs_solver_->setMutexReasoning(m);
+    cfg_mutex_reasoning_ = m;
 }
 
 void CBSTA::setDisjointSplitting(bool d) {
-    if (cbs_solver_) cbs_solver_->setDisjointSplitting(d);
+    cfg_disjoint_splitting_ = d;
 }
 
 void CBSTA::setBypass(bool b) {
-    if (cbs_solver_) cbs_solver_->setBypass(b);
+    cfg_bypass_ = b;
 }
 
 void CBSTA::setNodeLimit(int n) {
-    if (cbs_solver_) cbs_solver_->setNodeLimit(n);
+    cfg_node_limit_ = n;
 }
 
 void CBSTA::setSavingStats(bool s) {
-    if (cbs_solver_) cbs_solver_->setSavingStats(s);
+    cfg_save_stats_ = s;
 }
 
 void CBSTA::computeCostMatrix() {
@@ -124,6 +129,11 @@ void CBSTA::computeCostMatrix() {
 }
 
 std::unique_ptr<CBS> CBSTA::createCBSForAssignment(const std::vector<int>& assignment) {
+    // Clean up search engines from previous CBS solver
+    if (cbs_solver_) {
+        cbs_solver_->clearSearchEngines();
+    }
+    
     // Create search engines for agents with assigned goals
     std::vector<SingleAgentSolver*> search_engines(num_agents_);
     std::vector<ConstraintTable> constraints(num_agents_);
@@ -133,17 +143,20 @@ std::unique_ptr<CBS> CBSTA::createCBSForAssignment(const std::vector<int>& assig
         int goal_idx = assignment[agent];
         int goal_loc = all_goals_[goal_idx];
         
-        // Create temporary instance with this agent's goal
-        // Note: This is a workaround since Instance doesn't easily support
-        // dynamic goal assignment. In practice, we modify the search engine's goal.
+        // Create search engine for this agent
         if (use_sipp_) {
             search_engines[agent] = new SIPP(instance_, agent);
         } else {
             search_engines[agent] = new SpaceTimeAStar(instance_, agent);
         }
         
-        // Override the goal location
-        search_engines[agent]->goal_location = goal_loc;
+        // Override the goal location with the assigned goal.
+        // IMPORTANT: this also recomputes my_heuristic so it points to the
+        // assigned goal. Setting goal_location alone would leave the heuristic
+        // (computed in the constructor for the instance's original goal) stale,
+        // which produces sub-optimal paths and crashes MDD::buildMDD
+        // (assert levels.back().size() == 1).
+        search_engines[agent]->setGoalLocation(goal_loc);
         
         // Initialize constraint table with goal location
         constraints[agent] = ConstraintTable(instance_.num_of_cols, instance_.map_size);
@@ -152,6 +165,17 @@ std::unique_ptr<CBS> CBSTA::createCBSForAssignment(const std::vector<int>& assig
     
     // Create CBS solver with the configured search engines
     auto cbs = std::make_unique<CBS>(search_engines, constraints, initial_paths, screen_);
+    
+    cbs->setHeuristicType(cfg_heuristic_type_);
+    cbs->setPrioritizeConflicts(cfg_PC_);
+    cbs->setRectangleReasoning(cfg_rectangle_);
+    cbs->setCorridorReasoning(cfg_corridor_);
+    cbs->setTargetReasoning(cfg_target_reasoning_);
+    cbs->setMutexReasoning(cfg_mutex_reasoning_);
+    cbs->setDisjointSplitting(cfg_disjoint_splitting_);
+    cbs->setBypass(cfg_bypass_);
+    cbs->setNodeLimit(cfg_node_limit_);
+    cbs->setSavingStats(cfg_save_stats_);
     
     return cbs;
 }

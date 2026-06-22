@@ -178,6 +178,18 @@ private:
     // Priority queue for root nodes (min-heap by lower bound)
     std::vector<RootNode> root_nodes_;
     
+    // Stored configuration (applied to each CBS instance in createCBSForAssignment)
+    heuristics_type cfg_heuristic_type_ = heuristics_type::ZERO;
+    bool cfg_PC_ = false;
+    rectangle_strategy cfg_rectangle_ = rectangle_strategy::NR;
+    corridor_strategy cfg_corridor_ = corridor_strategy::NC;
+    bool cfg_target_reasoning_ = false;
+    bool cfg_mutex_reasoning_ = false;
+    bool cfg_disjoint_splitting_ = false;
+    bool cfg_bypass_ = false;
+    int cfg_node_limit_ = MAX_NODES;
+    bool cfg_save_stats_ = false;
+    
     // Internal methods
     
     /**

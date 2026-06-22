@@ -94,6 +94,14 @@ public:
 	list<int> getNextLocations(int curr) const; // including itself and its neighbors
 	list<int> getNeighbors(int curr) const { return instance.getNeighbors(curr); }
 
+	// Reassign the goal location (e.g. for task assignment) and recompute the
+	// precomputed heuristic so my_heuristic stays consistent with goal_location.
+	void setGoalLocation(int goal)
+	{
+		goal_location = goal;
+		compute_heuristics();
+	}
+
 	// int getStartLocation() const {return instance.start_locations[agent]; }
 	// int getGoalLocation() const {return instance.goal_locations[agent]; }
 

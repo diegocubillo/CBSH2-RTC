@@ -1082,17 +1082,17 @@ bool CBS::solve(double _time_limit, int _cost_lowerbound, int _cost_upperbound)
 
 
 
-CBS::CBS(vector<SingleAgentSolver*>& search_engines,
-		 const vector<ConstraintTable>& initial_constraints,
-         vector<Path>& paths_found_initially, int screen) :
+CBS::CBS(vector<SingleAgentSolver*>& engines_in,
+		 const vector<ConstraintTable>& constraints_in,
+         vector<Path>& paths_in, int screen) :
 		screen(screen), focal_w(1),
-		initial_constraints(initial_constraints), paths_found_initially(paths_found_initially),
-		search_engines(search_engines),
+		initial_constraints(constraints_in), paths_found_initially(paths_in),
+		search_engines(engines_in),
 		mdd_helper(initial_constraints, search_engines),
-		rectangle_helper(search_engines[0]->instance),
-		mutex_helper(search_engines[0]->instance, initial_constraints),
+		rectangle_helper(engines_in[0]->instance),
+		mutex_helper(engines_in[0]->instance, initial_constraints),
 		corridor_helper(search_engines, initial_constraints),
-		heuristic_helper(search_engines.size(), paths, search_engines, initial_constraints, mdd_helper)
+		heuristic_helper(engines_in.size(), paths, search_engines, initial_constraints, mdd_helper)
 {
 	num_of_agents = (int) search_engines.size();
 	mutex_helper.search_engines = search_engines;

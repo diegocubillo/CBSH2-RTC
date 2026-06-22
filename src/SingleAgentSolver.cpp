@@ -29,7 +29,12 @@ void SingleAgentSolver::compute_heuristics()
 		};  // used by OPEN (heap) to compare nodes (top of the heap has min f-val, and then highest g-val)
 	};
 
-	my_heuristic.resize(instance.map_size, MAX_TIMESTEP);
+	// Use assign (not resize) so that recomputing the heuristic for a new goal
+	// fully resets every cell. resize() on an already-sized vector keeps the old
+	// values, and since the BFS below only ever *lowers* a cell, a stale 0 from a
+	// previous goal would survive -- leaving two locations with heuristic 0 and
+	// breaking MDD construction. See SingleAgentSolver::setGoalLocation.
+	my_heuristic.assign(instance.map_size, MAX_TIMESTEP);
 
 	// generate a heap that can save nodes (and a open_handle)
 	boost::heap::pairing_heap<Node, boost::heap::compare<Node::compare_node> > heap;
