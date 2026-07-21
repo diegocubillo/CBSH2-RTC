@@ -18,6 +18,10 @@
 
 namespace cbs_planner {
 
+// Defined in CBSPlanner.cpp; shared so the Heuristic -> heuristics_type mapping
+// is not duplicated.
+heuristics_type toHeuristicsType(CBSPlanner::Heuristic h);
+
 // Helper to check if file exists
 static bool fileExists(const std::string& name) {
     struct stat buffer;
@@ -212,6 +216,7 @@ CBSTAPlanner::Result CBSTAPlanner::planPathsWithAssignment(
                                          config.use_sipp, config.screen);
         
         // Configure solver
+        pimpl_->cbsta_solver->setHeuristicType(toHeuristicsType(config.heuristic));
         pimpl_->cbsta_solver->setNodeLimit(config.node_limit);
         pimpl_->cbsta_solver->setPrioritizeConflicts(config.prioritize_conflicts);
         pimpl_->cbsta_solver->setTargetReasoning(config.target_reasoning);

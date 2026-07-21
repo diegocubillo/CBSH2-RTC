@@ -19,8 +19,10 @@
 
 namespace cbs_planner {
 
-// Map the public, dependency-free Config::Heuristic onto the internal enum
-static heuristics_type toHeuristicsType(CBSPlanner::Heuristic h) {
+// Map the public, dependency-free Config::Heuristic onto the internal enum.
+// Not static: CBSTAPlanner.cpp shares it (declared there) so the mapping lives
+// in exactly one place.
+heuristics_type toHeuristicsType(CBSPlanner::Heuristic h) {
     switch (h) {
         case CBSPlanner::Heuristic::ZERO: return heuristics_type::ZERO;
         case CBSPlanner::Heuristic::CG:   return heuristics_type::CG;

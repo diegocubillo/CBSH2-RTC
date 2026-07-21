@@ -14,6 +14,8 @@
 #include <string>
 #include <memory>
 
+#include "CBSPlanner.h"   // for CBSPlanner::Heuristic, shared by both planners
+
 namespace cbs_planner {
 
 /**
@@ -40,6 +42,9 @@ public:
      * Inherits all CBS options plus TAPF-specific settings.
      */
     struct Config {
+        // High-level heuristic used by each inner CBS search
+        CBSPlanner::Heuristic heuristic;
+
         // Time and node limits
         double time_limit;              // Time limit in seconds
         int node_limit;                 // Maximum high-level nodes to expand
@@ -60,7 +65,8 @@ public:
         int screen;
         
         // Default constructor with default values
-        Config() : time_limit(60.0), node_limit(100000),
+        Config() : heuristic(CBSPlanner::Heuristic::WDG),
+                   time_limit(60.0), node_limit(100000),
                    prioritize_conflicts(true), target_reasoning(true),
                    disjoint_splitting(false), rectangle_reasoning(false),
                    corridor_reasoning(false), mutex_reasoning(false),
