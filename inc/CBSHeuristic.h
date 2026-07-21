@@ -13,14 +13,19 @@ typedef unordered_map<DoubleConstraintsHasher, int, DoubleConstraintsHasher::Has
 class CBSHeuristic
 {
 public:
-	heuristics_type type;
-	rectangle_strategy rectangle_reasoning; // using rectangle reasoning
-	corridor_strategy corridor_reasoning; // using corridor reasoning
-	bool target_reasoning; // using target reasoning
-	bool mutex_reasoning; // using mutex reasoning
-	bool disjoint_splitting; // disjoint splitting
-	bool PC; // prioritize conflicts
-	bool save_stats;
+	// These must have in-class initialisers: CBS is often heap-allocated and a
+	// caller may leave any of them unset. In particular, computeInformedHeuristics
+	// switches on `type` and returns false (pruning the node) when no case matches,
+	// so an uninitialised `type` makes CBS report "no solution" on solvable
+	// instances, depending only on what garbage the heap happened to hold.
+	heuristics_type type = heuristics_type::WDG;
+	rectangle_strategy rectangle_reasoning = rectangle_strategy::NR; // using rectangle reasoning
+	corridor_strategy corridor_reasoning = corridor_strategy::NC; // using corridor reasoning
+	bool target_reasoning = false; // using target reasoning
+	bool mutex_reasoning = false; // using mutex reasoning
+	bool disjoint_splitting = false; // disjoint splitting
+	bool PC = false; // prioritize conflicts
+	bool save_stats = false;
 
 	double runtime_build_dependency_graph = 0;
 	double runtime_solve_MVC = 0;

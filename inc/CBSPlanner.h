@@ -44,9 +44,18 @@ public:
     using Paths = std::vector<Path>;
 
     /**
+     * @brief High-level heuristic for the CBS search
+     *
+     * Mirrors ::heuristics_type so that callers do not need CBSHeuristic.h.
+     * WDG is the CBSH2-RTC default and the strongest of the four.
+     */
+    enum class Heuristic { ZERO, CG, DG, WDG };
+
+    /**
      * @brief Configuration parameters for the CBS planner
      */
     struct Config {
+        Heuristic heuristic = Heuristic::WDG;  // High-level heuristic
         double time_limit = 60.0;              // Time limit in seconds
         int node_limit = 100000;               // Maximum number of nodes to expand
         bool prioritize_conflicts = true;      // Use conflict prioritization

@@ -19,6 +19,17 @@
 
 namespace cbs_planner {
 
+// Map the public, dependency-free Config::Heuristic onto the internal enum
+static heuristics_type toHeuristicsType(CBSPlanner::Heuristic h) {
+    switch (h) {
+        case CBSPlanner::Heuristic::ZERO: return heuristics_type::ZERO;
+        case CBSPlanner::Heuristic::CG:   return heuristics_type::CG;
+        case CBSPlanner::Heuristic::DG:   return heuristics_type::DG;
+        case CBSPlanner::Heuristic::WDG:  return heuristics_type::WDG;
+    }
+    return heuristics_type::WDG;
+}
+
 // Helper to check if file exists
 inline bool fileExists(const std::string& name) {
     struct stat buffer;   
@@ -278,6 +289,7 @@ CBSPlanner::Result CBSPlanner::planPaths(const std::string& map_file,
         pImpl->cbs_solver = new CBS(*pImpl->instance, config.use_sipp, 0);
         
         // Configure CBS parameters
+        pImpl->cbs_solver->setHeuristicType(toHeuristicsType(config.heuristic));
         pImpl->cbs_solver->setPrioritizeConflicts(config.prioritize_conflicts);
         pImpl->cbs_solver->setBypass(config.bypass);
         pImpl->cbs_solver->setTargetReasoning(config.target_reasoning);
