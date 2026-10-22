@@ -75,11 +75,16 @@ public:
      * @brief Solve the TAPF problem
      * 
      * Finds optimal task assignment and collision-free paths.
-     * 
-     * @param time_limit Maximum runtime in seconds
+     *
+     * As CBS does in MAPF, it fails (returns false, solution cost -1) when
+     * the time limit runs out, or when the CBS tree of an assignment stops on
+     * its time or node limit, before the best solution is proven optimal. The
+     * best cost found by then is kept in getBestCostFound().
+     *
+     * @param time_limit Maximum runtime in seconds of CPU time (clock()), as CBS
      * @param cost_lowerbound Lower bound on solution cost
      * @param cost_upperbound Upper bound on solution cost
-     * @return true if solution found, false otherwise
+     * @return true if an optimal solution was found, false otherwise
      */
     bool solve(double time_limit, int cost_lowerbound = 0, 
                int cost_upperbound = MAX_COST);
@@ -102,9 +107,17 @@ public:
      * @brief Get solution cost (sum of individual costs)
      */
     int getSolutionCost() const { return solution_cost_; }
-    
+
     /**
-     * @brief Get runtime in seconds
+     * @brief Cost of the best solution found, proven optimal or not; -1 if none
+     *
+     * Equals getSolutionCost() on success. After a limit, it is the solution
+     * that was not dispatched: for diagnostics only.
+     */
+    int getBestCostFound() const { return best_cost_found_; }
+
+    /**
+     * @brief Get runtime in seconds of CPU time (clock())
      */
     double getRuntime() const { return runtime_; }
     
@@ -162,6 +175,7 @@ private:
     // Solution state
     bool solution_found_ = false;
     int solution_cost_ = -2;
+    int best_cost_found_ = -1;
     double runtime_ = 0.0;
     uint64_t num_HL_expanded_ = 0;
     uint64_t num_HL_generated_ = 0;

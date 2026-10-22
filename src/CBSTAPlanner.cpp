@@ -140,6 +140,13 @@ public:
             result.success = false;
             result.error_message = "CBS-TA failed to find a solution";
             if (solver) {
+                result.solution_cost = solver->getSolutionCost();
+                // -1: a time or node limit stopped it before proving optimality
+                if (solver->getSolutionCost() == -1) {
+                    result.error_message = "CBS-TA: time or node limit reached before proving "
+                        "optimality (best cost found: " + std::to_string(solver->getBestCostFound()) +
+                        ", CPU time: " + std::to_string(solver->getRuntime()) + " s)";
+                }
                 result.runtime = solver->getRuntime();
                 result.num_expanded = static_cast<int>(solver->getNumHLExpanded());
                 result.num_generated = static_cast<int>(solver->getNumHLGenerated());

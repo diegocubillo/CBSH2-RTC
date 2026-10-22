@@ -9,7 +9,7 @@
 #include "SpaceTimeAStar.h"
 #include "SIPP.h"
 #include <algorithm>
-#include <chrono>
+#include <ctime>
 #include <iostream>
 #include <fstream>
 
@@ -181,7 +181,9 @@ std::unique_ptr<CBS> CBSTA::createCBSForAssignment(const std::vector<int>& assig
 }
 
 bool CBSTA::solve(double time_limit, int cost_lowerbound, int cost_upperbound) {
-    auto start_time = std::chrono::high_resolution_clock::now();
+    // CPU time, as CBS counts its own limit (CBS.cpp), so that TAPF and MAPF
+    // run out of time the same way
+    clock_t start_time = clock();
     
     if (screen_ > 0) {
         std::cout << "CBS-TA: " << num_agents_ << " agents, " 
@@ -207,24 +209,19 @@ bool CBSTA::solve(double time_limit, int cost_lowerbound, int cost_upperbound) {
     int current_best_cost = MAX_COST;
     std::vector<int> best_assignment;
     std::vector<Path> best_paths;
+    // Set when a limit stops the search before the best solution is proven
+    // optimal. Then, as CBS in MAPF, nothing is returned.
+    bool limit_reached = false;
     
     // Main CBS-TA loop: process root nodes in order of lower bound
     size_t root_idx = 0;
     while (root_idx < root_nodes_.size()) {
-        // Check time limit
-        auto current_time = std::chrono::high_resolution_clock::now();
-        double elapsed = std::chrono::duration<double>(current_time - start_time).count();
-        if (elapsed >= time_limit) {
-            if (screen_ > 0) {
-                std::cout << "CBS-TA: Timeout after " << elapsed << "s" << std::endl;
-            }
-            solution_cost_ = -1;
-            break;
-        }
-        
         RootNode& current_root = root_nodes_[root_idx];
         
-        // Pruning: if this root's lower bound >= current best, skip
+        // Pruning: if this root's lower bound >= current best, skip.
+        // Checked before the time limit: the roots are sorted by lower bound,
+        // so once one is pruned the incumbent is proven optimal, and the time
+        // running out while pruning the rest is not a failure.
         if (current_root.lower_bound >= current_best_cost) {
             if (screen_ > 1) {
                 std::cout << "CBS-TA: Pruning root " << root_idx 
@@ -233,6 +230,16 @@ bool CBSTA::solve(double time_limit, int cost_lowerbound, int cost_upperbound) {
             }
             root_idx++;
             continue;
+        }
+        
+        // Check time limit
+        double elapsed = (double) (clock() - start_time) / CLOCKS_PER_SEC;
+        if (elapsed >= time_limit) {
+            if (screen_ > 0) {
+                std::cout << "CBS-TA: Timeout after " << elapsed << "s (CPU)" << std::endl;
+            }
+            limit_reached = true;
+            break;
         }
         
         if (screen_ > 1) {
@@ -273,6 +280,21 @@ bool CBSTA::solve(double time_limit, int cost_lowerbound, int cost_upperbound) {
         num_HL_expanded_ += cbs_solver_->num_HL_expanded;
         num_HL_generated_ += cbs_solver_->num_HL_generated;
         
+        // A tree stopped on its time or node limit has not been searched to
+        // the end: its assignment might still beat the incumbent. CBS leaves
+        // solution_cost -1 for both, and also when its open list runs out, which
+        // instead proves the assignment infeasible; the limits tell them apart.
+        if (!solved && cbs_solver_->solution_cost == -1 &&
+            (cbs_solver_->runtime > remaining_time ||
+             cbs_solver_->num_HL_expanded > static_cast<uint64_t>(cbs_solver_->getNodeLimit()))) {
+            if (screen_ > 0) {
+                std::cout << "CBS-TA: CBS stopped on its time or node limit at root "
+                          << root_idx << std::endl;
+            }
+            limit_reached = true;
+            break;
+        }
+        
         if (solved && cbs_solver_->solution_cost >= 0 && cbs_solver_->solution_cost < current_best_cost) {
             current_best_cost = cbs_solver_->solution_cost;
             best_assignment = current_root.assignment;
@@ -311,8 +333,19 @@ bool CBSTA::solve(double time_limit, int cost_lowerbound, int cost_upperbound) {
     }
     
     // Finalize results
-    auto end_time = std::chrono::high_resolution_clock::now();
-    runtime_ = std::chrono::duration<double>(end_time - start_time).count();
+    runtime_ = (double) (clock() - start_time) / CLOCKS_PER_SEC;
+    best_cost_found_ = solution_found_ ? current_best_cost : -1;
+    
+    if (limit_reached) {
+        // Not proven optimal: fail as CBS does in MAPF, and return no plan
+        solution_found_ = false;
+        solution_cost_ = -1;
+        if (screen_ > 0) {
+            std::cout << "CBS-TA: No solution proven optimal within the limits"
+                      << " (best cost found = " << best_cost_found_ << ")" << std::endl;
+        }
+        return false;
+    }
     
     if (solution_found_) {
         solution_cost_ = current_best_cost;
