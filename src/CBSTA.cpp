@@ -10,6 +10,7 @@
 #include "SIPP.h"
 #include <algorithm>
 #include <ctime>
+#include <queue>
 #include <iostream>
 #include <fstream>
 
@@ -98,9 +99,36 @@ void CBSTA::setSavingStats(bool s) {
 void CBSTA::computeCostMatrix() {
     cost_matrix_.resize(num_agents_, std::vector<int>(num_goals_, cbs_planner::ASSIGNMENT_INF));
     
-    // For each agent, compute shortest path to each goal
+    // The cost of an agent-goal pair is the length of the agent's shortest path
+    // on the map, walls included, as in Hoenig et al. (ShortestPathHeuristic in
+    // libMultiRobotPlanning). Then the lower bound of an assignment is the cost
+    // of its CBS root ignoring conflicts, and the search forest can prune. The
+    // Manhattan distance used before ignores the walls: in a maze it pruned no
+    // assignment at all. One BFS per goal, with the moves of the low level
+    // (Instance::getNeighbors): N x M distances, not one per assignment.
+    std::vector<std::vector<int>> distance_to_goal(num_goals_);
+    for (int goal_idx = 0; goal_idx < num_goals_; goal_idx++) {
+        std::vector<int>& dist = distance_to_goal[goal_idx];
+        dist.assign(instance_.map_size, -1);  // -1: not reachable
+        std::queue<int> frontier;
+        dist[all_goals_[goal_idx]] = 0;
+        frontier.push(all_goals_[goal_idx]);
+        while (!frontier.empty()) {
+            int loc = frontier.front();
+            frontier.pop();
+            for (int next : instance_.getNeighbors(loc)) {
+                if (dist[next] < 0) {
+                    dist[next] = dist[loc] + 1;
+                    frontier.push(next);
+                }
+            }
+        }
+    }
+    
+    // For each agent, the distance from its start to each goal
     for (int agent = 0; agent < num_agents_; agent++) {
-        // Create a temporary single-agent solver
+        // A temporary single-agent solver, for the agent's start location
+        // (Instance keeps the starts private)
         std::unique_ptr<SingleAgentSolver> solver;
         if (use_sipp_) {
             solver = std::make_unique<SIPP>(instance_, agent);
@@ -115,15 +143,13 @@ void CBSTA::computeCostMatrix() {
                 continue;  // Keep as infinity
             }
             
-            int goal_loc = all_goals_[goal_idx];
+            int distance = distance_to_goal[goal_idx][start_loc];
             
-            // Simple BFS/Manhattan distance for now
-            // In a full implementation, we'd run A* to get actual shortest path
-            int distance = instance_.getManhattanDistance(start_loc, goal_loc);
-            
-            // If we need exact distances, we could run the full pathfinder here
-            // For optimal CBS-TA, the lower bound just needs to be admissible
-            cost_matrix_[agent][goal_idx] = distance;
+            // A goal the agent cannot reach stays at infinity: TaskAssignment
+            // then never proposes that pair, as with a forbidden one
+            if (distance >= 0) {
+                cost_matrix_[agent][goal_idx] = distance;
+            }
         }
     }
 }
